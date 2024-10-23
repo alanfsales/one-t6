@@ -1,0 +1,16 @@
+.container {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .container2 {
+    display: flex;
+    align-items: center;
+    /* height: 300px; /* Altura ajustável conforme necessário */
+  }
+
+  .responsivo-container {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }

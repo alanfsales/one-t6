@@ -1,0 +1,221 @@
+-- CONTROLE DE FLUXO COM IF
+DELIMITER $$
+CREATE PROCEDURE GET_CHECK_AGE_STATUS(
+       vCPF VARCHAR(11)
+)
+BEGIN
+       DECLARE vRESULT VARCHAR(20);
+    DECLARE vDATA_NASCIMENTO DATE;
+    SELECT DATA_NASCIMENTO INTO vDATA_NASCIMENTO FROM CLIENTES WHERE CPF = vCPF;
+    
+    IF vDATA_NASCIMENTO < '20000101' THEN
+              SET vRESULT = 'CLIENTE VELHO';
+       ELSE
+              SET vRESULT = 'CLIENTE NOVO';
+       END IF;    
+    SELECT vRESULT;
+END$$
+DELIMITER ;
+
+----------------
+
+DELIMITER $$
+CREATE PROCEDURE GET_TEST_NUMBER_NOTES(
+       vDATA_VENDA DATE
+)
+BEGIN
+       DECLARE vRESULT VARCHAR(20);
+    DECLARE vNUMBER_NOTES INT;
+    SELECT COUNT(*) INTO vNUMBER_NOTES FROM NOTAS WHERE DATA_VENDA = vDATA_VENDA;
+    IF vNUMBER_NOTES < 70 THEN
+              SET vRESULT = 'POUCA NOTA';
+       ELSE
+              SET vRESULT = 'MUITA NOTA';
+       END IF;
+    SELECT 
+              vNUMBER_NOTES AS QUANTIDADE_DE_NOTAS,
+              vRESULT AS RESULTADO;
+END$$
+DELIMITER ;
+
+----------------
+
+DELIMITER $$
+CREATE PROCEDURE GET_PRICE_CATEGORY (
+       IN vCODIGO VARCHAR(10)
+)
+BEGIN
+       DECLARE vPRICE_CATEGORY VARCHAR(15);
+    DECLARE vPRICE DECIMAL(10,2);
+    DECLARE vDESCRIPTION VARCHAR(100);
+    SELECT 
+              PRECO_LISTA, 
+        DESCRICAO 
+       INTO 
+              vPRICE,
+        vDESCRIPTION 
+       FROM PRODUTOS WHERE CODIGO = vCODIGO;
+    
+    IF vPRICE <= 7 THEN
+              SET vPRICE_CATEGORY = 'BARATO';
+       ELSEIF vPRICE > 12 THEN
+              SET vPRICE_CATEGORY = 'CARO';
+       ELSE
+              SET vPRICE_CATEGORY = 'EM CONTA';
+       END IF;
+    SELECT 
+              vCODIGO AS CODIGO_PRODUTO,
+        vDESCRIPTION AS DESCRICAO_PRODUTO,
+        vPRICE_CATEGORY AS CATEGORIA_PRECO;
+END$$
+DELIMITER ;
+
+----------------
+
+
+DELIMITER $$
+CREATE PROCEDURE CalculateSalesVariation(
+    IN initialDate DATE,
+    IN finalDate DATE
+)
+BEGIN
+    DECLARE initialTotalSales DECIMAL(15, 2);
+    DECLARE finalTotalSales DECIMAL(15, 2);
+    DECLARE salesVariation DECIMAL(15, 2);
+    DECLARE performanceIndicator VARCHAR(30);
+    
+    -- Calcular o total inicial
+    SELECT SUM(I.QUANTIDADE * I.PRECO) INTO initialTotalSales
+    FROM NOTAS N
+    INNER JOIN ITENS_NOTAS I ON N.NUMERO = I.NUMERO
+    WHERE N.DATA_VENDA = initialDate;
+    
+    -- Calcular o total final
+    SELECT SUM(I.QUANTIDADE * I.PRECO) INTO finalTotalSales
+    FROM NOTAS N
+    INNER JOIN ITENS_NOTAS I ON N.NUMERO = I.NUMERO
+    WHERE N.DATA_VENDA = finalDate;
+       
+    -- Verificação e cálculo da variação
+    IF finalTotalSales = 0 THEN
+        SET performanceIndicator = 'NÃO EXISTE DIVISÃO POR ZERO';
+    ELSE
+        SET salesVariation = ((initialTotalSales / finalTotalSales) - 1) * 100;
+        
+        -- Determina a cor baseada na variação
+        IF salesVariation > 10 THEN
+            SET performanceIndicator = 'VERDE';
+        ELSEIF salesVariation BETWEEN -10 AND 10 THEN
+            SET performanceIndicator = 'AMARELO';
+        ELSE
+            SET performanceIndicator = 'VERMELHO';
+        END IF;
+    END IF;   
+    
+    -- Retorna o resultado
+    SELECT performanceIndicator AS STATUS_VARIACAO;    
+END$$
+DELIMITER ;
+
+----------------
+
+-- CONTROLE DE FLUXO COM CASE
+
+
+DELIMITER $$
+CREATE PROCEDURE GET_SABOR_PRODUTOS_1(
+       VCODIGO VARCHAR(10)
+)
+BEGIN
+       DECLARE VSABOR VARCHAR(10);
+    DECLARE MSGERROR VARCHAR(30);
+    DECLARE CONTINUE HANDLER FOR 133 GET_PRICE_CATEGORY9 SET MSGERROR = 'O CASE ESTÁ SEM O ELSE';
+    SELECT SABOR INTO VSABOR FROM PRODUTOS WHERE CODIGO = VCODIGO;
+    CASE VSABOR
+              WHEN 'LIMA/LIMÃO' THEN SELECT 'CÍTRICO';
+        WHEN 'LARANJA' THEN SELECT 'CÍTRICO';
+        WHEN 'MORANGO/LIMÃO' THEN SELECT 'CÍTRICO';
+        WHEN 'UVA' THEN SELECT 'NEUTRO';
+        WHEN 'MORANGO' THEN SELECT 'NEUTRO';
+       END CASE;
+    SELECT MSGERROR;
+END$$
+DELIMITER ;
+
+----------------
+
+DELIMITER $$
+CREATE PROCEDURE GET_PRICE_CATEGORY_CASE(
+       IN vCodigo VARCHAR(10)
+)
+BEGIN
+       DECLARE vPriceCategory VARCHAR(15);
+    DECLARE vPrice DECIMAL(10,2);
+    DECLARE vDescription VARCHAR(100);
+        
+    -- Verifica a existência do produto se retorna 1 ou mais tem produto, senão, produto não existe.
+    IF EXISTS (SELECT 1 FROM PRODUTOS WHERE CODIGO = vCodigo) = 0 THEN
+              SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PRODUTO NÃO ENCONTRATO';
+       ELSE    
+              SELECT
+                     PRECO_LISTA,
+                     DESCRICAO
+              INTO
+                     vPrice,
+                     vDescription
+              FROM PRODUTOS WHERE CODIGO = vCodigo;
+    
+              CASE 
+                     WHEN vPrice <= 7 THEN SET vPriceCategory = 'BARATO';
+                     WHEN vPrice > 12 THEN SET vPriceCategory = 'CARO';
+              ELSE SET vPriceCategory = 'EM CONTA';            
+              END CASE;     
+        
+              -- Retorna os valores
+              SELECT 
+                     vCodigo AS codigoProduto,
+                     vDescription AS descricaoProduto,
+                     vPrice AS precoProduto,
+                     vPriceCategory AS categoriaPreco;
+       END IF;
+END$$
+DELIMITER ;
+
+----------------
+
+DELIMITER $$
+CREATE PROCEDURE CalculateSalesVariationCase(
+       initialDate DATE,
+    finalDate DATE
+)
+BEGIN
+       DECLARE initialTotalSales DECIMAL(15,2);
+    DECLARE finalTotalSales DECIMAL(15,2);
+    DECLARE salesVariation DECIMAL(15,2);
+    DECLARE performanceIndicator VARCHAR(30);
+    
+       SELECT SUM(I.QUANTIDADE * I.PRECO) INTO initialTotalSales
+       FROM NOTAS N
+       INNER JOIN ITENS_NOTAS I ON N.NUMERO = I.NUMERO
+       WHERE N.DATA_VENDA = initialDate;
+    
+       SELECT  SUM(I.QUANTIDADE * I.PRECO) INTO finalTotalSales
+       FROM NOTAS N
+       INNER JOIN ITENS_NOTAS I ON N.NUMERO = I.NUMERO
+       WHERE N.DATA_VENDA = finalDate;
+        
+       IF finalTotalSales = 0 THEN
+              SET performanceIndicator = 'NÃO HÁ DIVISÃO POR ZERO';
+       ELSE
+              SET salesVariation = ((initialTotalSales / finalTotalSales) -1) * 100;
+              CASE
+                     WHEN salesVariation > 10 THEN SET performanceIndicator = 'VERDE';
+                     WHEN salesVariation BETWEEN -10 AND 10 THEN SET performanceIndicator = 'AMARELO';
+                     ELSE SET performanceIndicator = 'VERMELHO';  
+              END CASE;
+       END IF;
+    SELECT 
+              performanceIndicator AS INDICADOR_DESEMPENHO,
+        salesVariation AS VARIACAO_VENDAS;
+END$$
+DELIMITER ;
